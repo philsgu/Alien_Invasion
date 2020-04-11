@@ -10,9 +10,16 @@ class AlienInvasion:
         """Initialize the game, and create the game resources."""
         pygame.init()
         self.settings = Settings()
+        # Full Screen mode 
 
-        self.screen = pygame.display.set_mode((self.settings.screen_width,
-                                               self.settings.screen_height))
+        ## self.screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+        ## self.settings.screen_width = self.screen.get_rect().width
+        ## self.settings.screen_height = self.screen.get_rect().height
+
+        # Settings mode
+        self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
+
+
         pygame.display.set_caption("Alien Invasion")
         # The self arugment gives Ship access to the game's resources e.g. screen object
         self.ship = Ship(self)
@@ -66,6 +73,6 @@ class AlienInvasion:
         # Make the most recently drawn screen visible.
         pygame.display.flip()
 
-
-ai = AlienInvasion()
-ai.run_game()
+if __name__ == "__main__":
+    ai = AlienInvasion()
+    ai.run_game()
