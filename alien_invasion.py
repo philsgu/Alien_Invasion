@@ -3,6 +3,7 @@ from time import sleep # to pause the game
 import pygame
 from settings import Settings
 from game_stats import GameStats
+from scoreboard import Scoreboard
 from button import Button
 from ship import Ship
 from bullet import Bullet
@@ -27,6 +28,8 @@ class AlienInvasion:
         pygame.display.set_caption("Alien Invasion")
         # Create an instance to store game stats
         self.stats = GameStats(self)
+        self.sb = Scoreboard(self)
+
         # The self arugment gives Ship access to the game's resources e.g. screen object
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
@@ -76,12 +79,23 @@ class AlienInvasion:
         # if so, get rid of the bullet and the alien. #1 True delete bullet, #2 True delete alien
       collisions = pygame.sprite.groupcollide(self.bullets, self.aliens, True, True)
 
-      #print(len(self.bullets))
+      if collisions: 
+        for aliens in collisions.values():
+          self.stats.score += self.settings.alien_points * len(aliens)
+        self.sb.prep_score()
+        self.sb.check_high_score()
+
+      
       #create more aliens after hitting them 
       if not self.aliens:
-        # Destroy existing bullets and create new fleet.
+        # Destroy existing bullets and create new fleet. Plus increse the speed next level
         self.bullets.empty()
         self._create_fleet()
+        self.settings.increase_speed()
+
+        #Increase level
+        self.stats.level += 1
+        self.sb.prep_level()
     
     def _create_fleet(self):
       """create the fleet of aliens."""
@@ -118,11 +132,43 @@ class AlienInvasion:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+              mouse_pos = pygame.mouse.get_pos()
+              self._check_play_button(mouse_pos)    
             elif event.type == pygame.KEYDOWN:
               self._check_keydown_events(event)
             elif event.type == pygame.KEYUP:
               self._check_keyup_events(event)
     
+    def _check_play_button(self, mouse_pos):
+      """Start a new game when the player clicks play"""
+      button_clicked = self.play_button.rect.collidepoint(mouse_pos)
+      if button_clicked and not self.stats.game_active: #True and True 
+        self._start_game()
+        
+    def _start_game(self):
+      # Reset the game settings
+      self.settings.initialize_dynamic_settings()
+      
+      # Reset the game stats
+      self.stats.reset_stats()
+      self.stats.game_active = True 
+      self.sb.prep_score()
+      self.sb.prep_level()
+      self.sb.prep_ships()
+
+      #Hide the mouse cursor
+      pygame.mouse.set_visible(False)
+
+      # Get rid of any remaining aliens and bullets
+      self.aliens.empty()
+      self.bullets.empty()
+
+      # Create a new fleet and center the ship
+      self._create_fleet()
+      self.ship.center_ship()
+
+
     def _check_keydown_events(self, event):
       """Respond to keypresses."""
       if event.key == pygame.K_RIGHT:
@@ -131,6 +177,8 @@ class AlienInvasion:
         self.ship.moving_left = True
       elif event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
         sys.exit()
+      elif event.key == pygame.K_p:
+        self._start_game()
       elif event.key == pygame.K_SPACE:
         self._fire_bullet()
     
@@ -176,8 +224,9 @@ class AlienInvasion:
     def _ship_hit(self):
       """Respond to the ship being hit by an alien."""
       if self.stats.ships_left > 0: 
-        # Decrement ships_left
+        # Decrement ships_left, and update the scoreboard
         self.stats.ships_left -=1
+        self.sb.prep_ships()
         # Get rid of any remaining aliens and bullets
         self.aliens.empty()
         self.bullets.empty()
@@ -188,6 +237,7 @@ class AlienInvasion:
         sleep(0.5)
       else:
         self.stats.game_active = False 
+        pygame.mouse.set_visible(True)
     
     def _check_aliens_bottom(self):
       """Check if any aliens have reached the bottom of the screen."""
@@ -206,6 +256,9 @@ class AlienInvasion:
         for bullet in self.bullets.sprites():
           bullet.draw_bullet()
         self.aliens.draw(self.screen)
+
+        # Draw the score information
+        self.sb.show_score()
 
         # Draw the play button if the game is inactive
         if not self.stats.game_active:
